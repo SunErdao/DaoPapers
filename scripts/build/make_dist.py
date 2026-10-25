@@ -23,6 +23,8 @@ from __future__ import annotations
 
 import os
 import shutil
+import struct
+import subprocess
 import sys
 import time
 import zipfile
@@ -52,6 +54,57 @@ def python_prefix() -> str:
     与 make_app.sh 的 detect_libpython 同一推导规则。"""
     real = os.path.realpath(sys.executable)
     return os.path.dirname(os.path.dirname(real))
+
+
+def is_macho(path: str) -> bool:
+    """按文件头 magic 判断是否 Mach-O（fat/thin 都算）。
+    不能靠扩展名：嵌入运行时里 dylib 与 .so 混在多处目录。"""
+    try:
+        with open(path, "rb") as fp:
+            head = fp.read(4)
+    except OSError:
+        return False
+    if len(head) < 4:
+        return False
+    magic = struct.unpack(">I", head)[0]
+    # MH_MAGIC/MH_CIGAM (32), MH_MAGIC_64/MH_CIGAM_64 (64), FAT_MAGIC/FAT_CIGAM
+    return magic in (0xFEEDFACE, 0xCEFAEDFE, 0xFEEDFACF, 0xCFFAEDFE,
+                     0xCAFEBABE, 0xBEBAFECA)
+
+
+def adhoc_sign_embedded(stage: str) -> None:
+    """对嵌入的每个 Mach-O 逐个 ad-hoc 重签（先内层，外层 bundle 由
+    make_app.sh 在 zip 前统一签）。
+
+    为什么不用 codesign --deep（2026-10-25 CI 首跑实测）：
+    嵌入的 libpython3.13.dylib 带着 setup-python 的原始签名，--deep 对
+    Resources 下的裸 dylib 不会可靠重签 → dlopen 报
+    「code signature invalid」直接拒绝加载。逐个 --force --sign - 才稳。
+    本机（dylib 无签名的 managed python）复现不了，CI 上必炸——
+    所以这一步对本机构建同样执行，两端行为一致。"""
+    res = os.path.join(stage, "Contents", "Resources")
+    targets = []
+    for sub in ("runtime", "site-packages"):
+        base = os.path.join(res, sub)
+        for dirpath, dirnames, filenames in os.walk(base):
+            dirnames.sort()
+            for fn in sorted(filenames):
+                p = os.path.join(dirpath, fn)
+                if is_macho(p):
+                    targets.append(p)
+    n_ok = n_fail = 0
+    for t in targets:
+        r = subprocess.run(["codesign", "--force", "--sign", "-", t],
+                           capture_output=True, text=True)
+        if r.returncode == 0:
+            n_ok += 1
+        else:
+            n_fail += 1
+            print(f"[make_dist] 签名失败（不阻断，dlopen 时才暴露）: {t}\n"
+                  f"  {r.stderr.strip()}", file=sys.stderr)
+    print(f"[make_dist] ad-hoc 重签嵌入 Mach-O: {n_ok} 成功, {n_fail} 失败")
+    if n_fail:
+        sys.exit(f"[make_dist] {n_fail} 个嵌入二进制签名失败，终止打包")
 
 
 def embed(project_root: str, stage: str) -> None:
@@ -103,6 +156,10 @@ def embed(project_root: str, stage: str) -> None:
         total = sum(os.path.getsize(os.path.join(d, f))
                     for d, _, fs in os.walk(path) for f in fs)
         print(f"[make_dist] 嵌入 {label}: {total / 1e6:.1f} MB -> {path}")
+
+    # 嵌入的 dylib / .so 必须逐个重签（见 adhoc_sign_embedded 注释），
+    # 必须在 make_app.sh 的外层 bundle 签名之前完成
+    adhoc_sign_embedded(stage)
 
 
 def zip_stage(project_root: str, stage: str) -> str:
