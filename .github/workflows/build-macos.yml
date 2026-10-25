@@ -27,9 +27,11 @@ jobs:
   build-macos:
     runs-on: macos-latest
     steps:
+      # 构建永远用 default branch 的最新代码：release_tag 只决定 zip 挂到哪个
+      # Release。若 checkout release_tag 指向的旧提交，旧代码可能没有 dist 模式
+      # （2026-10-25 首跑实测：checkout v1.0.0 → 旧 make_app.sh 走默认分支 →
+      #  图标重绘在 CI 上失败）。
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.release_tag || github.ref }}
 
       - uses: actions/setup-python@v5
         with:
