@@ -20,7 +20,8 @@ cache/
 Favorites/
 
 # ── 构建产物（.app staging / 打包中间文件）────────────────────
-build/
+# 只忽略仓库根的 build/；scripts/build/ 是构建链源码，必须进版本库
+/build/
 
 # ── macOS ─────────────────────────────────────────────────────
 .DS_Store
