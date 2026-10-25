@@ -1,0 +1,217 @@
+# =============================================================================
+#  岛·壁纸 / DaoPapers · 配置文件
+#  ------------------------------------------------------------------------
+#  修改后保存即可生效：托盘菜单 →「重新载入配置」，或重启应用。
+#  所有路径支持相对写法（相对本文件所在目录）或 ~ 开头的家目录写法。
+# =============================================================================
+
+app:
+  # 开机/启动时，若今天还没换过，就换一张（今天已换过则保持当前桌面不动）
+  change_on_launch: true
+  # 启动时先用缓存里的图秒开显示，同时后台去拉新图（网络差时体验更好）
+  show_cached_first: true
+  # 每天固定时间自动更换（24 小时制，可填多个）
+  schedule_times:
+    - "09:00"
+    - "20:00"
+  # 按间隔分钟更换（>0 时优先于 schedule_times；0 = 关闭间隔模式）
+  interval_minutes: 0
+  # 网络异常时的静默重试策略（不弹窗、不打扰）
+  retry:
+    max_attempts: 3
+    base_delay_seconds: 5
+    max_delay_seconds: 300
+
+display:
+  # 填充模式：fill=裁剪填满 / fit=完整显示(留白) / stretch=拉伸铺满 / center=居中原始尺寸
+  fill_mode: fill
+  # fit 与 center 模式的留白底色
+  background_color: "#15171a"
+  # 多显示器策略：independent=每块屏幕各一张 / same=所有屏幕同一张
+  multi_screen: independent
+  # 是否按屏幕实际像素重新合成图片（推荐 true，保证填充模式所见即所得）
+  recompose: true
+  # —— 菜单栏图标 ——
+  # 样式：white=纯白单色剪影（模板图，系统按菜单栏明暗自动反色，菜单栏标准做法，默认）
+  #       appicon=满色应用图标（与 Dock/启动台同一张图）
+  #       glyph=单色纯图形(模板图，跟随系统明暗) / solid=单色实心圆角
+  tray_icon_style: white
+  # 颜色：auto=跟随系统明暗自动反色(模板图) / white=纯白 / black=纯黑 / gray=灰色
+  # 仅对 glyph / solid 生效；white 与 appicon 固定自己的配色
+  tray_icon_color: auto
+  # 图标边长(pt)。菜单栏高 22pt，22 与系统图标等大
+  tray_icon_size: 22
+
+content:
+  # 只接受的最小分辨率（低于此值的图片直接丢弃）
+  min_width: 1920
+  min_height: 1080
+  # 构图方向：landscape=横构图 / portrait=竖构图 / any=不限
+  orientation: landscape
+  # —— 硬屏蔽词：命中任意一条即丢弃该图（英文，匹配标题/描述/标签）——
+  blocked_keywords:
+    - portrait
+    - portraits
+    - people
+    - person
+    - human
+    - man
+    - woman
+    - men
+    - women
+    - girl
+    - boy
+    - model
+    - models
+    - selfie
+    - selfies
+    - face
+    - faces
+    - bikini
+    - swimsuit
+    - swimwear
+    - beach-body
+    - lingerie
+    - underwear
+    - nude
+    - nsfw
+    - sexy
+    - glamour
+    - fashion-model
+    - wedding
+    - bride
+    - couple
+    - crowd
+    - festival-crowd
+  # —— 硬屏蔽词（中文，匹配标题/描述/标签）——
+  blocked_keywords_zh:
+    - 人物
+    - 人像
+    - 肖像
+    - 写真
+    - 美女
+    - 帅哥
+    - 泳装
+    - 比基尼
+    - 内衣
+    - 婚纱
+    - 新娘
+    - 街拍
+    - 模特
+    - 自拍
+    - 人群
+    - 聚会
+  # —— 允许的题材池（Unsplash 关键词检索时轮换使用，决定整体品味）——
+  topics:
+    - mountain landscape
+    - lake reflection
+    - ocean waves
+    - coastline aerial
+    - desert dunes
+    - forest fog
+    - autumn leaves
+    - wildflowers
+    - city skyline
+    - architecture minimal
+    - street photography empty
+    - night city lights
+    - bridges
+    - minimal abstract
+    - geometric pattern
+    - texture concrete
+    - marble texture
+    - wildlife animal
+    - birds
+    - plants leaves
+    - misty valley
+    - snow peaks
+    - river canyon
+    - clouds sky
+  # 每轮换时从题材池随机取几个词组合检索
+  topics_per_fetch: 2
+
+sources:
+  # ---------------------------------------------------------------------------
+  # Bing 每日壁纸：无需 API Key，题材以自然风光/城市为主，人物极少，开箱即用
+  # ---------------------------------------------------------------------------
+  bing:
+    enabled: true
+    # 市场代码：影响题材口味与文案语言（实测 Bing 全球当日主图相同，多填并不会变多）
+    market: zh-CN
+    # 抓最近多少天的图（1-8）；8 张够一周轮转
+    count: 8
+    # 尝试取 UHD 原图（失败自动回退 1920x1080）
+    prefer_uhd: true
+
+  # ---------------------------------------------------------------------------
+  # Unsplash：题材最可控，需免费申请 Access Key
+  #   申请地址：https://unsplash.com/oauth/applications （Demo 应用即可，50 次/小时）
+  # ---------------------------------------------------------------------------
+  unsplash:
+    enabled: false
+    api_key: ""            # ← 把 Access Key 粘到这里，例如 "abc123..."
+    # 检索模式：query=关键词 / topics=官方话题 / collection=收藏集
+    mode: query
+    # mode=topics 时使用（官方话题 id）
+    topic_ids:
+      - wallpapers
+      - nature
+      - textures-patterns
+      - architecture-interior
+      - animals
+    # mode=collection 时使用（收藏集 id）
+    collection_ids: []
+    # 内容安全等级：low / high
+    content_filter: low
+    per_page: 30
+
+  # ---------------------------------------------------------------------------
+  # Wallhaven：图库极大，可精确排除 people 分类（需 API Key）
+  #   申请地址：https://wallhaven.cc/settings/account
+  # ---------------------------------------------------------------------------
+  wallhaven:
+    enabled: false
+    api_key: ""
+    # 分类开关：general / anime / people，1=开 0=关（务必把 people 关掉）
+    categories: "100"
+    # 纯净度：sfw / sketchy / nsfw，1=开 0=关
+    purity: "100"
+    # 排序：random / hot / top / latest
+    sorting: random
+    # 最低分辨率筛选，例如 "1920x1080"
+    atleast: "1920x1080"
+    # 额外比例筛选，例如 "16x9,16x10"
+    ratios: "16x9,16x10"
+
+  # ---------------------------------------------------------------------------
+  # Picsum：无需 Key 的随机图兜底源（题材不可控，仅在其它源都失败时使用）
+  # ---------------------------------------------------------------------------
+  picsum:
+    enabled: true
+    only_when_others_fail: true
+
+  # ---------------------------------------------------------------------------
+  # 本地文件夹：把自己收藏的图片目录作为图源（支持子目录）
+  # ---------------------------------------------------------------------------
+  local:
+    enabled: false
+    folder: ""             # 例如 "~/Pictures/Wallpapers"
+
+storage:
+  # 缓存目录（已下载壁纸，断网时兜底）
+  cache_dir: "cache"
+  # 缓存最多保留多少张，超出按时间淘汰最旧的
+  max_cached_files: 200
+  # 收藏夹目录（点击「保存/收藏」时图片落盘到这里）
+  favorites_dir: "Favorites"
+  # 运行时数据（索引/收藏/屏蔽表）
+  data_dir: "data"
+  # 手动「保存到本地」的默认目录（留空=每次弹窗选择）
+  save_dir: "~/Pictures/DaoPapers"
+
+ui:
+  # 主窗口尺寸
+  window_width: 1180
+  window_height: 780
+  # 界面语言：zh-CN / en-US
+  language: zh-CN

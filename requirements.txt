@@ -1,0 +1,6 @@
+# 每日壁纸 · 依赖
+# 运行时只依赖 PyObjC（提供 AppKit / WebKit 原生能力）
+# 其余全部使用 Python 标准库实现（HTTP、配置解析、图像合成）
+
+pyobjc-framework-Cocoa>=10.0
+pyobjc-framework-WebKit>=10.0
