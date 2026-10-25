@@ -6,6 +6,8 @@
 #    ./scripts/make_app.sh open         生成并打开
 #    ./scripts/make_app.sh install      生成并安装到「应用程序」（启动台可见）
 #    ./scripts/make_app.sh install --force   强制重渲染全部图标尺寸
+#    ./scripts/make_app.sh dist         产出「可分发」zip（bundle 自带 Python
+#                                       运行时与依赖，换机器零依赖，供 Release 附件）
 #
 #  设计：常规应用（LSUIElement=false，代码里设 Regular），常驻 Dock + 菜单栏，
 #        启动台 / Dock 点击都能正常唤起主窗口，行为和其他 app 一致。
@@ -130,7 +132,8 @@ build_executable() {
     if clang -O2 -o "$exe" "$DIR/scripts/build/daopapers_launcher.c" \
       -DDAOPAPERS_PROJECT_ROOT="\"$DIR\"" \
       -DDAOPAPERS_LIBPYTHON="\"$libpython\"" \
-      -DDAOPAPERS_SITE_PACKAGES="\"$site_pkgs\"" 2>/dev/null; then
+      -DDAOPAPERS_SITE_PACKAGES="\"$site_pkgs\"" \
+      -DDAOPAPERS_PYVER="\"$pyver\"" 2>/dev/null; then
       ok "启动器：$exe"
       ok "Python 运行时：$libpython"
     elif [ -x "$exe" ]; then
@@ -307,6 +310,23 @@ print("  已写入", p)' "$BUNDLE_ID" "$bundle" "$DIR"
   ok "开机自动启动：${BUNDLE_ID}"
 }
 
+dist_package() {
+  # 产出「可分发」的 zip：bundle 自带运行时/依赖/源码，换机器零依赖。
+  # 启动器 daopapers_launcher.c 的「嵌入模式」与 scripts/build/make_dist.py
+  # 的 bundle 布局是同一份约定，两处必须同步修改。
+  # 沙箱注意：本函数只做「嵌入 + 覆盖写 zip」，不做删除/改名/临时文件。
+  say "嵌入运行时与项目源码（可分发布局）"
+  "$PY" "$DIR/scripts/build/make_dist.py" "$DIR" "$STAGE" embed || return 1
+  # 嵌入改动了 Resources → 之前的签名失效，重签一次（沙箱失败仅告警）
+  if codesign --force --deep --sign - "$STAGE" 2>&1; then
+    ok "已重签（ad-hoc）"
+  else
+    warn "codesign 失败（沙箱下常见）；不影响功能，CI 构建会正常签名"
+  fi
+  say "压缩为可分发包"
+  "$PY" "$DIR/scripts/build/make_dist.py" "$DIR" "$STAGE" zip
+}
+
 case "${1:-}" in
   install)
     shift 2>/dev/null || true
@@ -328,6 +348,19 @@ case "${1:-}" in
           "$BUNDLE/Contents/MacOS/${APP_NAME}"
     chmod_x "$BUNDLE/Contents/MacOS/${APP_NAME}"
     open "$BUNDLE"
+    ;;
+  dist)
+    shift 2>/dev/null || true
+    # CI / 发布构建：DAOPAPERS_SKIP_ICONS=1 跳过图标重绘（用仓库里已入库的
+    # AppIcon.icns 与托盘 PNG——CI runner 的 WKWebView 渲染不保证可用）
+    if [ "${DAOPAPERS_SKIP_ICONS:-0}" = "1" ]; then
+      warn "跳过图标重绘（DAOPAPERS_SKIP_ICONS=1，使用已入库图标）"
+    else
+      build_icon "$@"
+    fi
+    build_bundle
+    dist_package
+    echo "   可分发包已生成：build/DaoPapers-*-macOS.zip（bundle 自带运行时，零依赖）"
     ;;
   *)
     shift 2>/dev/null || true

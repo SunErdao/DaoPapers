@@ -23,6 +23,14 @@
 
 ## 1. 安装与运行
 
+### 方式一：下载安装包（推荐，零依赖）
+
+到 [Releases](https://github.com/SunErdao/DaoPapers/releases) 下载 `DaoPapers-<版本>-macOS.zip`（arm64，自带 Python 运行时与依赖，无需装任何环境），解压后把 `DaoPapers.app` 拖进「应用程序」并打开。
+
+> 应用为 ad-hoc 签名（未公证）：首次打开若提示「无法打开」，请**右键 → 打开**；或执行 `xattr -dr com.apple.quarantine /Applications/DaoPapers.app`。
+
+### 方式二：从源码构建
+
 ```bash
 cd daily-wallpaper
 ./scripts/install.sh          # 建虚拟环境 → 装依赖 → 打包装机 → 开机自启 → 立即启动
@@ -37,11 +45,12 @@ cd daily-wallpaper
 | `./scripts/install.sh stop` | 停止（不取消开机自启） |
 | `./scripts/install.sh uninstall` | 停止并移除开机自启（保留缓存与收藏） |
 
-打包 / 装机也可以单独做：
+打包 / 装机 / 发布包也可以单独做：
 
 ```bash
 ./scripts/make_app.sh            # 只生成构建产物（build/DaoPapers.staging）
 ./scripts/make_app.sh install    # 打包并装进「应用程序」（启动台可见）
+./scripts/make_app.sh dist       # 产出「可分发」zip（自带运行时，供 Release 附件）
 ```
 
 手动运行（不驻留、方便调试）：
@@ -65,7 +74,14 @@ launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.derdao.daopapers.pli
 
 为什么不能省：macOS 26 (Tahoe) 起 Control Center 托管所有第三方菜单栏状态项，并按「启动者的 responsible process」归因。若 `CFBundleExecutable` 是 execv 跳转的 trampoline（shell 包装脚本、解释器再 exec 真身），从启动台 / Finder 启动时**状态项不落户**——进程照跑、API 调用成功，但图标窗口停在 34x0 永不渲染（最小复现：github.com/mkrnr/macos-menu-bar-icon-bug-test-project）。Mach-O 直执启动器让 launchd 生成的进程就是应用本身，状态项据此正常落户。
 
-诊断日志：`data/logs/launcher.log`（启动器各阶段：dlopen / dlsym / 进入 Python）。
+诊断日志：`data/logs/launcher.log`（启动器各阶段：模式 / dlopen / dlsym / 进入 Python）。
+
+启动器支持两种运行模式（运行时自动选择，`make_app.sh dist` 的产物为前者）：
+
+| 模式 | 触发条件 | 依赖来源 |
+| --- | --- | --- |
+| **嵌入模式** | bundle 内存在 `Contents/Resources/app/main.py` | 全部来自 bundle：`Resources/runtime`（libpython + stdlib）、`Resources/site-packages`（pyobjc）、`Resources/app`（源码）——换机器零依赖 |
+| 开发模式 | 探测不到嵌入 payload | 编译期写死的本机路径（`make_app.sh` 普通构建，仅供开发机） |
 
 ---
 

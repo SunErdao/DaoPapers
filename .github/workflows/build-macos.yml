@@ -1,0 +1,82 @@
+name: Build macOS app
+
+# 产出「可分发」的 DaoPapers.app zip 并挂到 GitHub Release：
+#   · 推送 v* 标签        → 自动构建 + 创建同名 Release 并上传 zip
+#   · 手动触发（workflow_dispatch）
+#       release_tag 留空 → 只构建，产物存为 workflow artifact（供检查）
+#       release_tag 填写（如 v1.0.0）→ checkout 该标签构建，zip 附加到既有 Release
+#
+# 产物：build/DaoPapers-<版本>-macOS.zip（bundle 自带 Python 运行时与依赖，零外部依赖）
+# 说明：ad-hoc 签名 + 未公证 —— 首次打开需右键 → 打开（或 xattr -d com.apple.quarantine），
+#       见 README「安装」章节。
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: '要附加 zip 的既有 Release 标签（如 v1.0.0），留空仅构建'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: 创建虚拟环境并安装依赖
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install -r requirements.txt
+
+      - name: 构建可分发包（跳过图标重绘，用仓库已入库图标）
+        env:
+          DAOPAPERS_SKIP_ICONS: '1'
+        run: ./scripts/make_app.sh dist
+
+      - name: 冒烟测试（嵌入模式启动器 --version）
+        run: |
+          ZIP=$(ls build/DaoPapers-*-macOS.zip)
+          echo "产物: $ZIP"
+          TESTDIR=build/_smoke
+          mkdir -p "$TESTDIR"
+          unzip -q "$ZIP" -d "$TESTDIR"
+          "$TESTDIR/DaoPapers.app/Contents/MacOS/DaoPapers" --version
+          grep -q "mode: embedded" "$TESTDIR/DaoPapers.app/Contents/Resources/app/data/logs/launcher.log" \
+            || { echo "启动器未进入嵌入模式！"; cat "$TESTDIR/DaoPapers.app/Contents/Resources/app/data/logs/launcher.log"; exit 1; }
+          echo "嵌入模式确认 ✓"
+
+      - name: 上传构建产物（artifact）
+        uses: actions/upload-artifact@v4
+        with:
+          name: DaoPapers-macOS
+          path: build/DaoPapers-*-macOS.zip
+          if-no-files-found: error
+
+      - name: 附加到 Release
+        if: ${{ startsWith(github.ref, 'refs/tags/') || inputs.release_tag != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ inputs.release_tag || github.ref_name }}"
+          ZIP=$(ls build/DaoPapers-*-macOS.zip)
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$ZIP" --repo "$GITHUB_REPOSITORY" --clobber
+            echo "已附加到既有 Release: $TAG"
+          else
+            gh release create "$TAG" "$ZIP" --repo "$GITHUB_REPOSITORY" \
+              --title "$TAG" --generate-notes
+            echo "已创建 Release: $TAG"
+          fi
