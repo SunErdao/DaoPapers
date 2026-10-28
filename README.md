@@ -181,29 +181,20 @@ daily-wallpaper/
 ├── Favorites/              收藏的图片
 ├── data/                   索引、收藏表、屏蔽表、单实例锁、日志
 ├── docs/
-│   ├── evidence/           验收证据截图（启动台前后对比、运行时上报图标）
 │   └── preview/            设计预览图（非运行时依赖）
 ├── build/                  构建产物与诊断输出（可随时清空重建）
 └── scripts/
     ├── install.sh          安装 / 启停 / 卸载（正式入口）
     ├── make_app.sh         打包 .app 并装机（编译 Mach-O 启动器）
-    ├── build/              构建链（make_app.sh 直接调用）
-    │   ├── gen_icon_svg.py        生成精细化 SVG
-    │   ├── build_icons_from_svg.py  多尺寸渲染 → iconset → 自组装 icns
-    │   ├── build_icns.py           icns 自组装与校验（只产 PNG 型图层）
-    │   ├── gen_tray_white.py       菜单栏白版剪影
-    │   ├── gen_tray_icons.py       菜单栏 glyph/solid 多色剪影
-    │   ├── embed_brand_icon.py     从 icns 抽 128px 图层内嵌进 ui/index.html
-    │   ├── render_svg.py           SVG → PNG 光栅化器（WebKit 快照）
-    │   ├── strip_png_chunks.py     剥掉 PNG 的 eXIf 等非白名单 chunk
-    │   └── daopapers_launcher.c    Mach-O 启动器源码（进程内嵌 Python，见第 1 节）
-    └── tools/              诊断 / 校验 / 预览工具（不参与构建）
-        ├── verify_icon_render.py    IconServices 真实渲染验收（唯一权威判据）
-        ├── verify_launchpad_icon.py 启动台图标自动验收
-        ├── verify_dock_icon.py      Dock 图标验收
-        ├── verify_app_icon_e2e.py   三位置端到端验收
-        ├── check_syntax.py          AST 语法检查（不写 pycache）
-        └── …                        其余单点诊断脚本
+    └── build/              构建链（make_app.sh 直接调用）
+        ├── gen_icon_svg.py        生成精细化 SVG
+        ├── build_icons_from_svg.py  多尺寸渲染 → iconset → iconutil 产 icns
+        ├── gen_tray_white.py       菜单栏白版剪影
+        ├── embed_brand_icon.py     从 icns 抽 128px 图层内嵌进 ui/index.html
+        ├── render_svg.py           SVG → PNG 光栅化器（WebKit 快照）
+        ├── strip_png_chunks.py     剥掉 PNG 的 eXIf 等非白名单 chunk
+        ├── make_dist.py            可分发布局打包（嵌入运行时/依赖/源码）
+        └── daopapers_launcher.c    Mach-O 启动器源码（进程内嵌 Python，见第 1 节）
 ```
 
 > **为什么 `ui/` `assets/` `data/` `cache/` `Favorites/` 这几个目录名不能改**：
@@ -233,7 +224,6 @@ assets/tray/appicon*.png   菜单栏满色版
 assets/tray/glyph_*.png    菜单栏·无底板剪影版（多色）
 assets/tray/solid_*.png    菜单栏·带底板版（多色）
 
-docs/evidence/             验收证据截图（启动台前后对比、运行时上报图标）
 docs/preview/              设计预览图（非运行时依赖）
 ```
 
