@@ -148,8 +148,8 @@ sources:
   #   申请地址：https://unsplash.com/oauth/applications （Demo 应用即可，50 次/小时）
   # ---------------------------------------------------------------------------
   unsplash:
-    enabled: false
-    api_key: ""            # ← 把 Access Key 粘到这里，例如 "abc123..."
+    enabled: true         # 无 Key 时自动跳过；Key 放 config.local.yaml（不入库）
+    api_key: ""           # ← 本机 Key 在 config.local.yaml 的 sources.unsplash.api_key
     # 检索模式：query=关键词 / topics=官方话题 / collection=收藏集
     mode: query
     # mode=topics 时使用（官方话题 id）

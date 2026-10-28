@@ -33,3 +33,6 @@ Icon?
 .idea/
 .vscode/
 *.swp
+
+# 本地私密配置覆盖（API Key 等，不入库）
+/config.local.yaml

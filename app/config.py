@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 from . import miniyaml
 
 DEFAULT_FILENAME = "config.yaml"
+LOCAL_FILENAME = "config.local.yaml"  # 本地私密覆盖（.gitignore），用于 API Key 等不入库配置
 
 _DEFAULTS: Dict[str, Any] = {
     "app": {
@@ -70,6 +71,13 @@ class Config:
                 data = miniyaml.load(path)
             except Exception:
                 data = {}
+        # 本地覆盖文件（如 API Key），不存在则跳过；优先级高于 config.yaml
+        local_path = os.path.abspath(os.path.join(root, LOCAL_FILENAME))
+        if os.path.exists(local_path):
+            try:
+                data = _deep_merge(data, miniyaml.load(local_path))
+            except Exception:
+                pass  # 覆盖文件损坏时不阻断主配置加载
         merged = _deep_merge(_DEFAULTS, data)
         return cls(root=root, data=merged, path=path)
 
