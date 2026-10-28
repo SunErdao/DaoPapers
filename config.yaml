@@ -170,8 +170,8 @@ sources:
   #   申请地址：https://wallhaven.cc/settings/account
   # ---------------------------------------------------------------------------
   wallhaven:
-    enabled: false
-    api_key: ""
+    enabled: true
+    api_key: ""            # 可选：带 Key 可筛选更严格；SFW/general 检索无 Key 也可用
     # 分类开关：general / anime / people，1=开 0=关（务必把 people 关掉）
     categories: "100"
     # 纯净度：sfw / sketchy / nsfw，1=开 0=关
