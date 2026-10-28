@@ -78,17 +78,24 @@ write_plist() {
   "$VENV/bin/python" -c 'import os,plistlib,sys
 label, bundle, plist_path, appdir, logdir = sys.argv[1:6]
 os.makedirs(os.path.dirname(plist_path), exist_ok=True)
+# 直接启动 bundle 内二进制而非 /usr/bin/open -a：open 是瞬时命令，跑完即退，
+# KeepAlive 只能管到 open 进程，管不到应用本身。直接 exec 应用二进制后，
+# KeepAlive {SuccessfulExit: false} 才有正确语义：崩溃/被杀自动拉起，
+# 用户主动退出（正常退出码 0）不打扰。
+exe = os.path.join(appdir, bundle, "Contents", "MacOS",
+                   os.path.splitext(bundle)[0])
 plist = {
     "Label": label,
-    "ProgramArguments": ["/usr/bin/open", "-a", os.path.join(appdir, bundle)],
+    "ProgramArguments": [exe],
     "RunAtLoad": True,
+    "KeepAlive": {"SuccessfulExit": False},
     "StandardOutPath": os.path.join(logdir, "launchd.out.log"),
     "StandardErrorPath": os.path.join(logdir, "launchd.err.log"),
 }
 with open(plist_path, "wb") as fp:
     plistlib.dump(plist, fp)
 print("  已写入", plist_path)' "$LABEL" "${APP_NAME}.app" "$PLIST" "$appdir" "$LOGDIR"
-  ok "开机自启已配置（经 ${appdir}/${APP_NAME}.app）"
+  ok "开机自启已配置（崩溃自动拉起；主动退出不会被打扰）"
 }
 
 load_agent() {
