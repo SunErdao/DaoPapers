@@ -284,8 +284,10 @@ print("  ", src, "->", dst)' "$target"
 
 install_autostart() {
   # 开机自启：写 ~/Library/LaunchAgents/<bundleid>.plist
-  # 用 /usr/bin/open -a 而不是直接跑可执行文件：走 LaunchServices，
-  # 系统对 .app 的激活/聚焦行为更正确。
+  # 直接 exec bundle 内二进制 + KeepAlive{SuccessfulExit:false}：
+  # 崩溃/被杀自动拉起；用户主动退出（exit 0）不打扰。
+  # （2026-10-28 修复：旧写法 /usr/bin/open -a 是瞬时命令，KeepAlive
+  #  管不到应用进程，用户退出后应用彻底停摆、无人拉起。）
   # launchctl bootstrap 在本机沙箱下报 I/O error，但登录时 launchd 会
   # 自动扫描 ~/Library/LaunchAgents，无需 bootstrap 也能自启。
   # bundle 路径要和实际安装位置一致（/Applications 不可写时会落到 ~/Applications）。
@@ -293,13 +295,14 @@ install_autostart() {
   say "配置开机自启"
   "$PY" -c 'import os,plistlib,sys
 label, bundle, root = sys.argv[1], sys.argv[2], sys.argv[3]
+exe = os.path.join(bundle, "Contents", "MacOS", os.path.splitext(os.path.basename(bundle))[0])
 d = os.path.expanduser("~/Library/LaunchAgents")
 os.makedirs(d, exist_ok=True)
 plist = {
     "Label": label,
-    "ProgramArguments": ["/usr/bin/open", "-a", bundle],
+    "ProgramArguments": [exe],
     "RunAtLoad": True,
-    "KeepAlive": False,
+    "KeepAlive": {"SuccessfulExit": False},
     "StandardOutPath": os.path.join(root, "data", "logs", "launchd.out.log"),
     "StandardErrorPath": os.path.join(root, "data", "logs", "launchd.err.log"),
 }
